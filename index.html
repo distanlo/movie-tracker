@@ -69,13 +69,32 @@
   </div>
 
   <script>
-    const data = {};
-    // This will be filled in by your Python script
-    // Example:
-    // data["movie name"] = [ {timestamp: "...", rating: "...", vote_count: "...", release_date: "..."} ];
+    // ✅ This gets populated by the Python script:
+    const data = {
+      // Example:
+      // "happy gilmore 2": [
+      //   {"timestamp": "2025-07-27 09:00", "rating": "6.8", "vote_count": "1143", "release_date": "2025-07-25"},
+      //   ...
+      // ]
+    };
 
     const sel = document.getElementById("sel");
     const tb = document.getElementById("table");
+
+    // Populate dropdown on page load
+    window.onload = function () {
+      const movieNames = Object.keys(data);
+      movieNames.forEach(name => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.innerText = name;
+        sel.appendChild(opt);
+      });
+      if (movieNames.length > 0) {
+        sel.value = movieNames[0];
+        update();
+      }
+    };
 
     function update() {
       const movie = sel.value;
