@@ -1,1 +1,13 @@
-<html><body><p>Loading TMDb scores...</p></body></html>
+<html><head><title>Movie Score Tracker</title></head><body><h1>TMDb Score Tracker</h1><select id='sel' onchange='update()'><option value='fantastic four first steps'>fantastic four first steps</option><option value='happy gilmore 2'>happy gilmore 2</option></select><table border='1'><thead><tr><th>Time</th><th>Rating</th><th>Votes</th><th>Release</th></tr></thead><tbody id='table'></tbody></table><script>const data = {};data['fantastic four first steps'] = [{'timestamp': '2025-07-27 18:27:05', 'title': 'fantastic four first steps', 'rating': '1.0', 'vote_count': '1', 'release_date': '2025-07-21'}];data['happy gilmore 2'] = [{'timestamp': '2025-07-27 18:27:05', 'title': 'happy gilmore 2', 'rating': '6.9', 'vote_count': '149', 'release_date': '2025-07-25'}];
+function update(){
+  const m = document.getElementById('sel').value;
+  const tb = document.getElementById('table');
+  tb.innerHTML = '';
+  data[m].forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${row.timestamp}</td><td>${row.rating}</td><td>${row.vote_count}</td><td>${row.release_date}</td>`;
+    tb.appendChild(tr);
+  });
+}
+update();
+</script></body></html>
