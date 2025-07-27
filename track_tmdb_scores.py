@@ -2,10 +2,7 @@ import os
 import csv
 import requests
 from datetime import datetime
-from dotenv import load_dotenv
 
-# Load .env locally if testing (safe to skip if you're using GitHub Secrets)
-load_dotenv()
 
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 if not TMDB_API_KEY:
