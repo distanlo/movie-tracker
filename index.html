@@ -138,6 +138,28 @@
               options: {
                 responsive: true,
                 scales: {
+                  x: {
+  type: 'time',
+  time: {
+    tooltipFormat: 'MMM d, h:mm a',
+    displayFormats: {
+      hour: 'MMM d, ha',
+      minute: 'h:mma',
+    }
+  },
+  title: {
+    display: true,
+    text: 'Timestamp'
+  },
+  ticks: {
+    autoSkip: true,
+    maxRotation: 0,
+    callback: function(value, index, ticks) {
+      const date = new Date(value);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+  }
+}
                   y: {
                     beginAtZero: false,
                     min: 0,
