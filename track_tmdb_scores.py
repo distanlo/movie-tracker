@@ -1,9 +1,82 @@
+import requests
 import pandas as pd
-import json
+import os
+from datetime import datetime
 
-csv_file = "tmdb_scores.csv"
-df = pd.read_csv(csv_file)
+# Load API key from environment
+TMDB_API_KEY = os.getenv("TMDB_API_KEY")
+if not TMDB_API_KEY:
+    raise ValueError("TMDB_API_KEY is not set in environment variables.")
 
+# File paths
+MOVIES_FILE = "movies.txt"
+CSV_FILE = "tmdb_scores.csv"
+HTML_FILE = "index.html"
+
+# Ensure the CSV exists with headers
+if not os.path.exists(CSV_FILE):
+    with open(CSV_FILE, "w") as f:
+        f.write("title,timestamp,rating,vote_count,release_date\n")
+
+# Load existing CSV
+df = pd.read_csv(CSV_FILE)
+
+# Load movie titles
+with open(MOVIES_FILE, "r") as f:
+    movie_names = [line.strip() for line in f if line.strip()]
+
+new_rows = []
+
+for movie in movie_names:
+    print(f"[INFO] Fetching data for '{movie}'...")
+    search_url = f"https://api.themoviedb.org/3/search/movie"
+    params = {"api_key": TMDB_API_KEY, "query": movie}
+    res = requests.get(search_url, params=params)
+
+    if res.status_code != 200:
+        print(f"❌ Error searching '{movie}': HTTP {res.status_code}")
+        continue
+
+    results = res.json().get("results")
+    if not results:
+        print(f"❌ No results found for '{movie}'")
+        continue
+
+    top = results[0]
+    movie_id = top.get("id")
+    title = top.get("title")
+    release_date = top.get("release_date", "")
+
+    # Get full movie details
+    details_url = f"https://api.themoviedb.org/3/movie/{movie_id}"
+    detail_params = {"api_key": TMDB_API_KEY}
+    details = requests.get(details_url, params=detail_params).json()
+
+    rating = details.get("vote_average")
+    vote_count = details.get("vote_count")
+
+    if rating is not None and vote_count is not None:
+        timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"✅ {title}: {rating} ({vote_count} votes)")
+        new_rows.append({
+            "title": title,
+            "timestamp": timestamp,
+            "rating": rating,
+            "vote_count": vote_count,
+            "release_date": release_date
+        })
+    else:
+        print(f"❌ Failed to get score for {movie}")
+
+# Append new data
+if new_rows:
+    new_df = pd.DataFrame(new_rows)
+    df = pd.concat([df, new_df], ignore_index=True)
+    df.to_csv(CSV_FILE, index=False)
+else:
+    print("⚠️ No new data added.")
+
+# Generate index.html
 grouped = df.groupby("title")
 data_dict = {}
 
@@ -19,13 +92,13 @@ for title, group in grouped:
         })
     data_dict[title] = entries
 
-html_template = f"""<!DOCTYPE html>
+html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TMDb Score Tracker</title>
-  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+  <link rel="icon" href="favicon.ico" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
   <style>
     body {{
@@ -92,7 +165,7 @@ html_template = f"""<!DOCTYPE html>
   </div>
 
   <script>
-    const data = {json.dumps(data_dict, indent=2)};
+    const data = {data_dict};
     const sel = document.getElementById("sel");
     const tb = document.getElementById("table");
 
@@ -122,7 +195,10 @@ html_template = f"""<!DOCTYPE html>
     }}
   </script>
 </body>
-</html>"""
+</html>
+"""
 
-with open("index.html", "w", encoding="utf-8") as f:
-    f.write(html_template)
+with open(HTML_FILE, "w", encoding="utf-8") as f:
+    f.write(html)
+
+print("✅ HTML page and CSV updated successfully.")
