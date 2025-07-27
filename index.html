@@ -1,111 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TMDb Score Tracker</title>
-  <link rel="icon" href="favicon.ico" type="image/x-icon" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
-  <style>
-    body {
-      background-color: #121212;
-      color: #f0f0f0;
-      font-family: 'Segoe UI', sans-serif;
-      padding: 1rem;
-    }
-    .container {
-      max-width: 100%;
-      margin: auto;
-    }
-    h1 {
-      font-size: 1.75rem;
-      text-align: center;
-      margin-bottom: 1rem;
-    }
-    .form-select {
-      margin-bottom: 1rem;
-    }
-    table {
-      background-color: #1e1e1e;
-      font-size: 0.9rem;
-    }
-    th {
-      background-color: #282828;
-    }
-    td, th {
-      text-align: center;
-      vertical-align: middle;
-      padding: 0.5rem;
-    }
-    footer {
-      text-align: center;
-      font-size: 0.85rem;
-      margin-top: 2rem;
-      color: #888;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>📊 TMDb Score Tracker</h1>
-    <label for="sel" class="form-label">Choose a movie:</label>
-    <select id="sel" class="form-select" onchange="update()"></select>
-
-    <div class="table-responsive">
-      <table class="table table-striped table-bordered table-dark mt-3">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Rating</th>
-            <th>Votes</th>
-            <th>Release</th>
-          </tr>
-        </thead>
-        <tbody id="table"></tbody>
-      </table>
-    </div>
-
-    <footer>Made with 🍿 by Big Dawg – Updates every hour via GitHub Actions</footer>
-  </div>
-
-  <script>
-    // ✅ This gets populated by the Python script:
-    const data = {
-      // Example:
-      // "happy gilmore 2": [
-      //   {"timestamp": "2025-07-27 09:00", "rating": "6.8", "vote_count": "1143", "release_date": "2025-07-25"},
-      //   ...
-      // ]
-    };
-
-    const sel = document.getElementById("sel");
-    const tb = document.getElementById("table");
-
-    // Populate dropdown on page load
-    window.onload = function () {
-      const movieNames = Object.keys(data);
-      movieNames.forEach(name => {
-        const opt = document.createElement("option");
-        opt.value = name;
-        opt.innerText = name;
-        sel.appendChild(opt);
-      });
-      if (movieNames.length > 0) {
-        sel.value = movieNames[0];
-        update();
-      }
-    };
-
-    function update() {
-      const movie = sel.value;
-      if (!movie || !data[movie]) return;
-      tb.innerHTML = "";
-      data[movie].forEach(row => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${row.timestamp}</td><td>${row.rating}</td><td>${row.vote_count}</td><td>${row.release_date}</td>`;
-        tb.appendChild(tr);
-      });
-    }
-  </script>
-</body>
-</html>
+<html><head><title>Movie Score Tracker</title></head><body><h1>TMDb Score Tracker</h1><select id='sel' onchange='update()'><option value='fantastic four first steps'>fantastic four first steps</option><option value='happy gilmore 2'>happy gilmore 2</option></select><table border='1'><thead><tr><th>Time</th><th>Rating</th><th>Votes</th><th>Release</th></tr></thead><tbody id='table'></tbody></table><script>const data = {};data['fantastic four first steps'] = [{'timestamp': '2025-07-27 18:27:05', 'title': 'fantastic four first steps', 'rating': '1.0', 'vote_count': '1', 'release_date': '2025-07-21'}, {'timestamp': '2025-07-27 18:36:49', 'title': 'fantastic four first steps', 'rating': '1.0', 'vote_count': '1', 'release_date': '2025-07-21'}];data['happy gilmore 2'] = [{'timestamp': '2025-07-27 18:27:05', 'title': 'happy gilmore 2', 'rating': '6.9', 'vote_count': '149', 'release_date': '2025-07-25'}, {'timestamp': '2025-07-27 18:36:49', 'title': 'happy gilmore 2', 'rating': '6.9', 'vote_count': '149', 'release_date': '2025-07-25'}];
+function update(){
+  const m = document.getElementById('sel').value;
+  const tb = document.getElementById('table');
+  tb.innerHTML = '';
+  data[m].forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${row.timestamp}</td><td>${row.rating}</td><td>${row.vote_count}</td><td>${row.release_date}</td>`;
+    tb.appendChild(tr);
+  });
+}
+update();
+</script></body></html>
