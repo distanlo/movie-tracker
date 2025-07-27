@@ -3,119 +3,104 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TMDb Score Tracker</title>
+  <title>Movie Score Tracker</title>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(to bottom, #f8f9fa, #e9ecef);
-      margin: 0;
+      font-family: Arial, sans-serif;
       padding: 2rem;
+      margin: 0;
+      background: #f9f9f9;
       color: #333;
     }
-    .container {
-      max-width: 500px;
-      margin: auto;
-      background: #fff;
-      padding: 2rem;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    }
+
     h1 {
       text-align: center;
-      font-size: 1.8rem;
-      margin-bottom: 1.5rem;
+      color: #222;
     }
-    label {
-      font-weight: bold;
+
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
     }
+
     select {
       width: 100%;
       padding: 0.5rem;
-      margin: 1rem 0;
       font-size: 1rem;
-      border-radius: 6px;
-      border: 1px solid #ccc;
+      margin-bottom: 1rem;
     }
-    .score-card {
-      background: #f1f3f5;
-      padding: 1rem;
-      border-radius: 8px;
-      text-align: center;
+
+    .info {
       font-size: 1.2rem;
+      line-height: 1.5;
     }
-    .score-card p {
-      margin: 0.5rem 0;
+
+    .label {
+      font-weight: bold;
     }
+
     @media (max-width: 600px) {
-      body {
+      .container {
         padding: 1rem;
       }
-      .container {
-        padding: 1.2rem;
+
+      h1 {
+        font-size: 1.5rem;
       }
     }
   </style>
 </head>
 <body>
+  <h1>🎬 Movie Score Tracker</h1>
   <div class="container">
-    <h1>🎬 TMDb Movie Score Tracker</h1>
-
-    <label for="movie-select">Choose a movie:</label>
+    <label for="movie-select">Select a movie:</label>
     <select id="movie-select">
-      <option value="">-- Select a movie --</option>
+      <option disabled selected value> -- Select a movie -- </option>
     </select>
-
-    <div class="score-card">
-      <p><strong>Score:</strong> <span id="score">-</span></p>
-      <p><strong>Number of Reviews:</strong> <span id="review-count">-</span></p>
+    <div class="info">
+      <p><span class="label">Score:</span> <span id="score">-</span></p>
+      <p><span class="label">Review Count:</span> <span id="review-count">-</span></p>
     </div>
   </div>
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
-      const movieSelect = document.getElementById("movie-select");
-      const scoreSpan = document.getElementById("score");
-      const reviewCountSpan = document.getElementById("review-count");
-
-      let movieData = {};
-
       fetch("tmdb_scores.csv")
-        .then((res) => res.text())
-        .then((csv) => {
-          const rows = csv.trim().split("\n").slice(1); // Skip header
+        .then((response) => response.text())
+        .then((data) => {
+          const lines = data.trim().split("\n");
+          const headers = lines[0].split(",");
+          const rows = lines.slice(1).map((line) => line.split(","));
+
+          const dropdown = document.getElementById("movie-select");
+          const scoreDisplay = document.getElementById("score");
+          const countDisplay = document.getElementById("review-count");
+
+          // Populate dropdown using the Title column (index 1)
           rows.forEach((row) => {
-            const [title, score, reviewCount] = row.split(",");
-            movieData[title.trim()] = {
-              score: score.trim(),
-              reviews: reviewCount.trim(),
-            };
+            const movieName = row[1]; // Title
+            const option = document.createElement("option");
+            option.value = movieName;
+            option.textContent = movieName;
+            dropdown.appendChild(option);
           });
 
-          // Populate dropdown
-          Object.keys(movieData).forEach((title) => {
-            const opt = document.createElement("option");
-            opt.value = title;
-            opt.textContent = title;
-            movieSelect.appendChild(opt);
+          dropdown.addEventListener("change", function () {
+            const selected = this.value;
+            const match = rows.find((r) => r[1] === selected);
+            if (match) {
+              scoreDisplay.textContent = match[2]; // Rating
+              countDisplay.textContent = match[3]; // Vote Count
+            } else {
+              scoreDisplay.textContent = "-";
+              countDisplay.textContent = "-";
+            }
           });
-
-          // Set initial value
-          if (movieSelect.value) updateDisplay(movieSelect.value);
         });
-
-      movieSelect.addEventListener("change", function () {
-        updateDisplay(this.value);
-      });
-
-      function updateDisplay(movie) {
-        if (movieData[movie]) {
-          scoreSpan.textContent = movieData[movie].score;
-          reviewCountSpan.textContent = movieData[movie].reviews;
-        } else {
-          scoreSpan.textContent = "-";
-          reviewCountSpan.textContent = "-";
-        }
-      }
     });
   </script>
 </body>
