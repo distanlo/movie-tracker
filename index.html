@@ -2,174 +2,158 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Movie Score Tracker</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 2rem;
       margin: 0;
-      background: #f4f4f4;
+      padding: 1rem;
+      background-color: #f8f9fa;
       color: #333;
     }
-
     h1 {
       text-align: center;
       margin-bottom: 1rem;
     }
-
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      background: white;
-      padding: 2rem;
-      border-radius: 12px;
-      box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
+    #container {
+      max-width: 800px;
+      margin: auto;
     }
-
     select {
       width: 100%;
       padding: 0.5rem;
       font-size: 1rem;
       margin-bottom: 1rem;
     }
-
-    .info {
-      font-size: 1.1rem;
-      margin-bottom: 1rem;
-    }
-
     canvas {
-      max-width: 100%;
-    }
-
-    @media (max-width: 600px) {
-      .container {
-        padding: 1rem;
-      }
+      width: 100% !important;
+      height: auto !important;
     }
   </style>
 </head>
 <body>
-  <h1>🎬 Movie Score Tracker</h1>
-  <div class="container">
-    <label for="movie-select">Select a movie:</label>
-    <select id="movie-select">
-      <option disabled selected value> -- Select a movie -- </option>
+  <div id="container">
+    <h1>🎬 Movie Score Tracker</h1>
+    <select id="movieSelect">
+      <option value="">Select a movie</option>
     </select>
-
-    <div class="info">
-      <p><strong>Latest Score:</strong> <span id="score">-</span></p>
-      <p><strong>Latest Review Count:</strong> <span id="review-count">-</span></p>
-    </div>
-
-    <canvas id="scoreChart" height="200"></canvas>
+    <canvas id="scoreChart"></canvas>
   </div>
 
   <script>
-    let chart;
+    async function fetchData() {
+      const response = await fetch('tmdb_scores.csv');
+      const text = await response.text();
+      const rows = text.trim().split('\n').slice(1);
+      const data = rows.map(row => {
+        const [timestamp, title, rating, voteCount, releaseDate] = row.split(',');
+        return { timestamp, title, rating: parseFloat(rating), voteCount: parseInt(voteCount) };
+      });
+      return data;
+    }
 
-    document.addEventListener("DOMContentLoaded", function () {
-      fetch("tmdb_scores.csv")
-        .then((response) => response.text())
-        .then((data) => {
-          const lines = data.trim().split("\n");
-          const rows = lines.slice(1).map((line) => line.split(","));
-          const movieMap = {};
+    function formatTimeLabel(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleString([], {
+        month: 'numeric',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
 
-          // Group by movie title
-          rows.forEach((row) => {
-            const [timestamp, title, rating, voteCount] = row;
-            if (!movieMap[title]) movieMap[title] = [];
-            movieMap[title].push({
-              timestamp,
-              rating: parseFloat(rating),
-              voteCount: parseInt(voteCount, 10),
-            });
-          });
+    function updateDropdown(data) {
+      const select = document.getElementById('movieSelect');
+      const uniqueTitles = [...new Set(data.map(d => d.title))];
+      uniqueTitles.forEach(title => {
+        const option = document.createElement('option');
+        option.value = title;
+        option.textContent = title;
+        select.appendChild(option);
+      });
+    }
 
-          const dropdown = document.getElementById("movie-select");
-          const scoreDisplay = document.getElementById("score");
-          const countDisplay = document.getElementById("review-count");
-
-          // Populate dropdown with unique movie titles
-          Object.keys(movieMap).forEach((title) => {
-            const option = document.createElement("option");
-            option.value = title;
-            option.textContent = title;
-            dropdown.appendChild(option);
-          });
-
-          dropdown.addEventListener("change", function () {
-            const selectedTitle = this.value;
-            const dataPoints = movieMap[selectedTitle];
-
-            if (!dataPoints) return;
-
-            // Sort by timestamp
-            dataPoints.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-            // Display latest score and count
-            const latest = dataPoints[dataPoints.length - 1];
-            scoreDisplay.textContent = latest.rating;
-            countDisplay.textContent = latest.voteCount;
-
-            // Prepare chart data
-            const labels = dataPoints.map((d) => d.timestamp);
-            const ratings = dataPoints.map((d) => d.rating);
-
-            if (chart) chart.destroy();
-            const ctx = document.getElementById("scoreChart").getContext("2d");
-            chart = new Chart(ctx, {
-              type: "line",
-              data: {
-                labels: labels,
-                datasets: [{
-                  label: "Score Over Time",
-                  data: ratings,
-                  borderColor: "#4e73df",
-                  backgroundColor: "rgba(78, 115, 223, 0.05)",
-                  tension: 0.3,
-                  pointRadius: 4,
-                  fill: true
-                }]
+    function renderChart(data, selectedTitle) {
+      const ctx = document.getElementById('scoreChart').getContext('2d');
+      const filtered = data.filter(d => d.title === selectedTitle);
+      const sorted = filtered.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      const chartData = {
+        labels: sorted.map(d => d.timestamp),
+        datasets: [{
+          label: 'Rating',
+          data: sorted.map(d => ({ x: d.timestamp, y: d.rating })),
+          borderColor: '#007bff',
+          backgroundColor: 'rgba(0, 123, 255, 0.2)',
+          fill: true,
+          tension: 0.3
+        }]
+      };
+      if (window.myChart) window.myChart.destroy();
+      window.myChart = new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            title: {
+              display: true,
+              text: `TMDb Rating Over Time for "${selectedTitle}"`
+            }
+          },
+          scales: {
+            x: {
+              type: 'time',
+              time: {
+                tooltipFormat: 'MMM d, h:mm a',
+                displayFormats: {
+                  hour: 'MM/dd ha',
+                  minute: 'MM/dd h:mma',
+                }
               },
-              options: {
-                responsive: true,
-                scales: {
-                  x: {
-  type: 'time',
-  time: {
-    tooltipFormat: 'MMM d, h:mm a',
-    displayFormats: {
-      hour: 'MMM d, ha',
-      minute: 'h:mma',
-    }
-  },
-  title: {
-    display: true,
-    text: 'Timestamp'
-  },
-  ticks: {
-    autoSkip: true,
-    maxRotation: 0,
-    callback: function(value, index, ticks) {
-      const date = new Date(value);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-  }
-}
-                  y: {
-                    beginAtZero: false,
-                    min: 0,
-                    max: 10
-                  }
+              title: {
+                display: true,
+                text: 'Timestamp'
+              },
+              ticks: {
+                autoSkip: true,
+                maxRotation: 0,
+                callback: function(value) {
+                  const date = new Date(value);
+                  return date.toLocaleString([], {
+                    month: 'numeric',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  });
                 }
               }
-            });
-          });
-        });
+            },
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Rating'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const data = await fetchData();
+      updateDropdown(data);
+
+      document.getElementById('movieSelect').addEventListener('change', (e) => {
+        const selectedTitle = e.target.value;
+        if (selectedTitle) {
+          renderChart(data, selectedTitle);
+        }
+      });
     });
   </script>
 </body>
