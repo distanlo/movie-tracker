@@ -2,14 +2,13 @@ name: Run TMDb Scraper
 
 on:
   schedule:
-    - cron: "0 * * * *"  # Runs at the top of every hour
-  workflow_dispatch:     # Allows manual triggering
+    - cron: "0 * * * *"  # Run every hour
+  workflow_dispatch:     # Allow manual trigger
 
 jobs:
   run-scraper:
     runs-on: ubuntu-latest
-    env:
-      TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -23,13 +22,15 @@ jobs:
         run: pip install pandas requests
 
       - name: Run Python script
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: python track_tmdb_scores.py
 
-     - name: Commit and push changes (force)
-  run: |
-    git config user.name "github-actions"
-    git config user.email "github-actions@github.com"
-    git add tmdb_scores.csv index.html
-    git commit -m "Update scores" || echo "No changes to commit"
-    git pull --rebase
-    git push --force
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add tmdb_scores.csv index.html
+          git commit -m "Update scores" || echo "No changes to commit"
+          git pull --rebase
+          git push --force
