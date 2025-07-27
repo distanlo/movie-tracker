@@ -1,82 +1,128 @@
-import os
-import requests
-import csv
-from datetime import datetime
+import pandas as pd
+import json
 
-API_KEY = os.getenv("TMDB_API_KEY")
-MOVIE_FILE = "movies.txt"
-CSV_FILE = "tmdb_scores.csv"
-HTML_FILE = "index.html"
+csv_file = "tmdb_scores.csv"
+df = pd.read_csv(csv_file)
 
-def get_movie_score(title):
-    url = f"https://api.themoviedb.org/3/search/movie"
-    params = {"api_key": API_KEY, "query": title}
-    res = requests.get(url, params=params)
-    data = res.json()
-    if not data.get("results"):
-        return None
-    movie = data["results"][0]
-    return {
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "title": title,
-        "rating": movie.get("vote_average", "N/A"),
-        "vote_count": movie.get("vote_count", "N/A"),
-        "release_date": movie.get("release_date", "N/A")
-    }
+grouped = df.groupby("title")
+data_dict = {}
 
-def write_to_csv(row):
-    file_exists = os.path.exists(CSV_FILE)
-    with open(CSV_FILE, "a", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=row.keys())
-        if not file_exists:
-            writer.writeheader()
-        writer.writerow(row)
+for title, group in grouped:
+    group_sorted = group.sort_values("timestamp")
+    entries = []
+    for _, row in group_sorted.iterrows():
+        entries.append({
+            "timestamp": row["timestamp"],
+            "rating": row["rating"],
+            "vote_count": row["vote_count"],
+            "release_date": row["release_date"]
+        })
+    data_dict[title] = entries
 
-def generate_html():
-    if not os.path.exists(CSV_FILE):
-        return
-    with open(CSV_FILE, newline="") as f:
-        reader = csv.DictReader(f)
-        rows = list(reader)
+html_template = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TMDb Score Tracker</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {{
+      background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+      color: #f8f9fa;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 1rem;
+    }}
+    .container {{
+      max-width: 800px;
+      margin: auto;
+    }}
+    h1 {{
+      font-size: 2rem;
+      text-align: center;
+      margin-bottom: 1rem;
+    }}
+    select {{
+      margin-bottom: 1rem;
+    }}
+    table {{
+      font-size: 0.9rem;
+    }}
+    th {{
+      background-color: #343a40;
+    }}
+    td, th {{
+      text-align: center;
+      vertical-align: middle;
+      padding: 0.6rem;
+    }}
+    .table-dark tbody tr:nth-child(odd) {{
+      background-color: #2d2d2d;
+    }}
+    footer {{
+      text-align: center;
+      font-size: 0.85rem;
+      margin-top: 2rem;
+      color: #ccc;
+    }}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎬 TMDb Score Tracker</h1>
+    <label for="sel" class="form-label">🎞 Select a movie:</label>
+    <select id="sel" class="form-select" onchange="update()"></select>
 
-    movies = sorted(set(r["title"] for r in rows))
-    grouped = {m: [r for r in rows if r["title"] == m] for m in movies}
+    <div class="table-responsive">
+      <table class="table table-dark table-striped table-bordered mt-3">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Rating</th>
+            <th>Votes</th>
+            <th>Release</th>
+          </tr>
+        </thead>
+        <tbody id="table"></tbody>
+      </table>
+    </div>
 
-    with open(HTML_FILE, "w") as f:
-        f.write("<html><head><title>Movie Score Tracker</title></head><body>")
-        f.write("<h1>TMDb Score Tracker</h1><select id='sel' onchange='update()'>")
-        for movie in movies:
-            f.write(f"<option value='{movie}'>{movie}</option>")
-        f.write("</select><table border='1'><thead><tr><th>Time</th><th>Rating</th><th>Votes</th><th>Release</th></tr></thead><tbody id='table'></tbody></table>")
-        f.write("<script>const data = {};")
-        for movie, records in grouped.items():
-            f.write(f"data['{movie}'] = {records};")
-        f.write("""
-function update(){
-  const m = document.getElementById('sel').value;
-  const tb = document.getElementById('table');
-  tb.innerHTML = '';
-  data[m].forEach(row => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${row.timestamp}</td><td>${row.rating}</td><td>${row.vote_count}</td><td>${row.release_date}</td>`;
-    tb.appendChild(tr);
-  });
-}
-update();
-</script></body></html>""")
+    <footer>⚡ Updated hourly via GitHub Actions · Built by Big Dawg 🍿</footer>
+  </div>
 
-def main():
-    with open(MOVIE_FILE) as f:
-        titles = [line.strip() for line in f if line.strip()]
-    for title in titles:
-        print(f"🔍 Fetching: {title}")
-        row = get_movie_score(title)
-        if row:
-            write_to_csv(row)
-            print(f"✅ {title}: {row['rating']} ({row['vote_count']} votes)")
-        else:
-            print(f"❌ Failed to get score for {title}")
-    generate_html()
+  <script>
+    const data = {json.dumps(data_dict, indent=2)};
+    const sel = document.getElementById("sel");
+    const tb = document.getElementById("table");
 
-if __name__ == "__main__":
-    main()
+    window.onload = function () {{
+      const movieNames = Object.keys(data);
+      movieNames.forEach(name => {{
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.innerText = name;
+        sel.appendChild(opt);
+      }});
+      if (movieNames.length > 0) {{
+        sel.value = movieNames[0];
+        update();
+      }}
+    }};
+
+    function update() {{
+      const movie = sel.value;
+      if (!movie || !data[movie]) return;
+      tb.innerHTML = "";
+      data[movie].forEach(row => {{
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${row.timestamp}</td><td>${row.rating}</td><td>${row.vote_count}</td><td>${row.release_date}</td>`;
+        tb.appendChild(tr);
+      }});
+    }}
+  </script>
+</body>
+</html>"""
+
+with open("index.html", "w", encoding="utf-8") as f:
+    f.write(html_template)
