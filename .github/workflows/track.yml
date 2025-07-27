@@ -25,10 +25,11 @@ jobs:
       - name: Run Python script
         run: python track_tmdb_scores.py
 
-      - name: Commit and push changes
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add tmdb_scores.csv index.html
-          git commit -m "Update scores" || echo "No changes to commit"
-          git push
+     - name: Commit and push changes (force)
+  run: |
+    git config user.name "github-actions"
+    git config user.email "github-actions@github.com"
+    git add tmdb_scores.csv index.html
+    git commit -m "Update scores" || echo "No changes to commit"
+    git pull --rebase
+    git push --force
