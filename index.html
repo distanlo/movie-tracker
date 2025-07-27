@@ -4,22 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Movie Score Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 2rem;
       margin: 0;
-      background: #f9f9f9;
+      background: #f4f4f4;
       color: #333;
     }
 
     h1 {
       text-align: center;
-      color: #222;
+      margin-bottom: 1rem;
     }
 
     .container {
-      max-width: 500px;
+      max-width: 600px;
       margin: 0 auto;
       background: white;
       padding: 2rem;
@@ -35,21 +36,17 @@
     }
 
     .info {
-      font-size: 1.2rem;
-      line-height: 1.5;
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
     }
 
-    .label {
-      font-weight: bold;
+    canvas {
+      max-width: 100%;
     }
 
     @media (max-width: 600px) {
       .container {
         padding: 1rem;
-      }
-
-      h1 {
-        font-size: 1.5rem;
       }
     }
   </style>
@@ -61,44 +58,94 @@
     <select id="movie-select">
       <option disabled selected value> -- Select a movie -- </option>
     </select>
+
     <div class="info">
-      <p><span class="label">Score:</span> <span id="score">-</span></p>
-      <p><span class="label">Review Count:</span> <span id="review-count">-</span></p>
+      <p><strong>Latest Score:</strong> <span id="score">-</span></p>
+      <p><strong>Latest Review Count:</strong> <span id="review-count">-</span></p>
     </div>
+
+    <canvas id="scoreChart" height="200"></canvas>
   </div>
 
   <script>
+    let chart;
+
     document.addEventListener("DOMContentLoaded", function () {
       fetch("tmdb_scores.csv")
         .then((response) => response.text())
         .then((data) => {
           const lines = data.trim().split("\n");
-          const headers = lines[0].split(",");
           const rows = lines.slice(1).map((line) => line.split(","));
+          const movieMap = {};
+
+          // Group by movie title
+          rows.forEach((row) => {
+            const [timestamp, title, rating, voteCount] = row;
+            if (!movieMap[title]) movieMap[title] = [];
+            movieMap[title].push({
+              timestamp,
+              rating: parseFloat(rating),
+              voteCount: parseInt(voteCount, 10),
+            });
+          });
 
           const dropdown = document.getElementById("movie-select");
           const scoreDisplay = document.getElementById("score");
           const countDisplay = document.getElementById("review-count");
 
-          // Populate dropdown using the Title column (index 1)
-          rows.forEach((row) => {
-            const movieName = row[1]; // Title
+          // Populate dropdown with unique movie titles
+          Object.keys(movieMap).forEach((title) => {
             const option = document.createElement("option");
-            option.value = movieName;
-            option.textContent = movieName;
+            option.value = title;
+            option.textContent = title;
             dropdown.appendChild(option);
           });
 
           dropdown.addEventListener("change", function () {
-            const selected = this.value;
-            const match = rows.find((r) => r[1] === selected);
-            if (match) {
-              scoreDisplay.textContent = match[2]; // Rating
-              countDisplay.textContent = match[3]; // Vote Count
-            } else {
-              scoreDisplay.textContent = "-";
-              countDisplay.textContent = "-";
-            }
+            const selectedTitle = this.value;
+            const dataPoints = movieMap[selectedTitle];
+
+            if (!dataPoints) return;
+
+            // Sort by timestamp
+            dataPoints.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+            // Display latest score and count
+            const latest = dataPoints[dataPoints.length - 1];
+            scoreDisplay.textContent = latest.rating;
+            countDisplay.textContent = latest.voteCount;
+
+            // Prepare chart data
+            const labels = dataPoints.map((d) => d.timestamp);
+            const ratings = dataPoints.map((d) => d.rating);
+
+            if (chart) chart.destroy();
+            const ctx = document.getElementById("scoreChart").getContext("2d");
+            chart = new Chart(ctx, {
+              type: "line",
+              data: {
+                labels: labels,
+                datasets: [{
+                  label: "Score Over Time",
+                  data: ratings,
+                  borderColor: "#4e73df",
+                  backgroundColor: "rgba(78, 115, 223, 0.05)",
+                  tension: 0.3,
+                  pointRadius: 4,
+                  fill: true
+                }]
+              },
+              options: {
+                responsive: true,
+                scales: {
+                  y: {
+                    beginAtZero: false,
+                    min: 0,
+                    max: 10
+                  }
+                }
+              }
+            });
           });
         });
     });
