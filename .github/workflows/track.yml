@@ -1,30 +1,12 @@
-name: Track TMDb Scores
+name: TMDb Score Tracker
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Every hour on the hour
-  workflow_dispatch:     # Manual trigger support
-
-steps:
-  - uses: actions/checkout@v3
-
-  - name: Set up Python
-    uses: actions/setup-python@v4
-    with:
-      python-version: '3.11'
-
-  - name: Install dependencies
-    run: |
-      python -m pip install --upgrade pip
-      pip install -r requirements.txt
-
-  - name: Run tracker script
-    run: python track_tmdb_scores.py
-
-  # Optional: commit and push updates
+    - cron: '0 * * * *'  # Every hour
+  workflow_dispatch:     # Allow manual trigger
 
 jobs:
-  track-scores:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -34,20 +16,22 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Run score tracker
-        env:
-          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+      - name: Run tracker script
         run: python track_tmdb_scores.py
 
-      - name: Commit updated files
+      - name: Commit and push updates
         run: |
           git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add tmdb_scores.csv index.html || true
+          git config user.email "github-actions@github.com"
+          git add index.html tmdb_scores.csv
           git commit -m "Update scores" || echo "No changes to commit"
           git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
