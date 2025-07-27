@@ -19,7 +19,7 @@
       margin-bottom: 1rem;
     }
     #container {
-      max-width: 800px;
+      max-width: 900px;
       margin: auto;
     }
     select {
@@ -32,6 +32,28 @@
       width: 100% !important;
       height: auto !important;
     }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 2rem;
+      font-size: 0.95rem;
+    }
+    th, td {
+      padding: 0.5rem;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      background-color: #e9ecef;
+    }
+    @media (max-width: 600px) {
+      body {
+        padding: 0.5rem;
+      }
+      table, thead, tbody, th, td, tr {
+        font-size: 0.85rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -41,6 +63,7 @@
       <option value="">Select a movie</option>
     </select>
     <canvas id="scoreChart"></canvas>
+    <div id="tableContainer"></div>
   </div>
 
   <script>
@@ -55,16 +78,6 @@
       return data;
     }
 
-    function formatTimeLabel(dateString) {
-      const date = new Date(dateString);
-      return date.toLocaleString([], {
-        month: 'numeric',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
-
     function updateDropdown(data) {
       const select = document.getElementById('movieSelect');
       const uniqueTitles = [...new Set(data.map(d => d.title))];
@@ -76,10 +89,39 @@
       });
     }
 
+    function renderTable(filteredData) {
+      const tableContainer = document.getElementById('tableContainer');
+      tableContainer.innerHTML = '';
+
+      if (filteredData.length === 0) return;
+
+      const table = document.createElement('table');
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Rating</th>
+            <th>Votes</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filteredData.map(d => `
+            <tr>
+              <td>${new Date(d.timestamp).toLocaleString()}</td>
+              <td>${d.rating.toFixed(1)}</td>
+              <td>${d.voteCount}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      `;
+      tableContainer.appendChild(table);
+    }
+
     function renderChart(data, selectedTitle) {
       const ctx = document.getElementById('scoreChart').getContext('2d');
       const filtered = data.filter(d => d.title === selectedTitle);
       const sorted = filtered.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
       const chartData = {
         labels: sorted.map(d => d.timestamp),
         datasets: [{
@@ -91,6 +133,7 @@
           tension: 0.3
         }]
       };
+
       if (window.myChart) window.myChart.destroy();
       window.myChart = new Chart(ctx, {
         type: 'line',
@@ -142,6 +185,8 @@
           }
         }
       });
+
+      renderTable(sorted);
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
